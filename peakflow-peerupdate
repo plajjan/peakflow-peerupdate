@@ -5,6 +5,7 @@ import sys
 
 from pypeakflow.peakflow_soap import ConnectionOptions, PeakflowSOAP
 from pypeakflow.mo import ManagedObject, MoMatchPeerAs
+from pypeakflow.auto_config import InterfaceRule
 
 class Peer:
     def __init__(self):
@@ -29,6 +30,8 @@ if __name__ == '__main__':
     parser.add_option("--asn", help="set peer ASN")
     parser.add_option("--name", help="set peer name")
     parser.add_option("--description", help="set peer description")
+    parser.add_option("--precedence", help="insert rules starting with precedence")
+    parser.add_option("--interface-desc-re", help="interface description regexp")
     parser.add_option("--commit", action="store_true", help="commit configuration")
     (options, args) = parser.parse_args()
 
@@ -53,6 +56,22 @@ if __name__ == '__main__':
         mo.match = MoMatchPeerAs()
         mo.match.peer_as = options.asn
         mo.save()
+
+        interface_desc_re = options.interface_desc_re % { 'asn': options.asn }
+
+        ir = InterfaceRule()
+        ir.co = co
+        ir.precedence = options.precedence
+        ir.name = "Peer AS%s" % options.asn
+        ir.description = "Auto-generated rule for peer AS%s" % options.asn
+        ir.action_type = True
+        ir.action_set_type = 'external'
+        ir.action_asns = True
+        ir.action_set_asn = options.asn
+        ir.action_set_mo_type = 'simple'
+        ir.action_set_mos.append(options.name)
+        ir.match_intf_desc_regex = interface_desc_re
+        ir.save()
 
     if options.commit:
         pf = PeakflowSOAP(co)
